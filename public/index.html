@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevJavu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <button class="brand-btn" data-view="home">
+      <span class="brand">DevJavu</span>
+      <span class="brand-sub">development journal</span>
+    </button>
+    <nav class="topnav">
+      <button class="nav-btn" data-view="home">Timeline</button>
+      <button class="nav-btn" data-view="calendar">Calendar</button>
+    </nav>
+    <div class="topbar-meta">
+      <span class="date" id="today"></span>
+      <span class="score" id="score-pill">—</span>
+      <button class="btn" id="new-btn">+ new entry</button>
+    </div>
+  </header>
+
+  <!-- ═══════ HOME VIEW ═══════ -->
+  <main class="container view" id="view-home">
+    <section class="hero">
+      <div class="score-block">
+        <div class="score-number" id="score-num">0</div>
+        <div class="score-label">productivity</div>
+      </div>
+      <div class="score-reason" id="score-reason">No entries today.</div>
+      <div class="score-stats">
+        <span><b id="stat-count">0</b> entries</span>
+        <span><b id="stat-chars">0</b> chars</span>
+        <span><b id="stat-tags">0</b> tags</span>
+        <span><b id="stat-span">0</b>h span</span>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <h2 id="timeline-title">Timeline</h2>
+      <div class="section-actions">
+        <span class="count" id="entry-count"></span>
+        <button class="link-btn" id="clear-filter" hidden>clear filter ×</button>
+      </div>
+    </div>
+
+    <section class="timeline" id="timeline"></section>
+  </main>
+
+  <!-- ═══════ CALENDAR VIEW ═══════ -->
+  <main class="container view hidden" id="view-calendar">
+    <div class="cal-head">
+      <button class="cal-nav" id="cal-prev">‹</button>
+      <h2 id="cal-month"></h2>
+      <button class="cal-nav" id="cal-next">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend">
+      <span class="dot dot-0"></span> no entries
+      <span class="dot dot-1"></span> 1
+      <span class="dot dot-2"></span> 2–3
+      <span class="dot dot-3"></span> 4+
+    </div>
+  </main>
+
+  <!-- ═══════ ENTRY DETAIL VIEW ═══════ -->
+  <main class="detail-view hidden" id="view-entry">
+    <header class="detail-head">
+      <button class="back-btn" id="detail-back">← back</button>
+      <div class="detail-date" id="detail-date"></div>
+    </header>
+    <div class="detail-content" id="detail-content"></div>
+  </main>
+
+  <!-- ═══════ MODAL (new/edit entry) ═══════ -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <span class="modal-title" id="modal-title">New entry</span>
+        <button class="icon-btn" id="modal-close" aria-label="Close">×</button>
+      </div>
+      <form id="entry-form" class="modal-body">
+        <input type="hidden" name="id">
+        <div class="row">
+          <div class="field">
+            <label>Date</label>
+            <input type="date" name="date" required>
+          </div>
+          <div class="field">
+            <label>Time</label>
+            <input type="time" name="time" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Title</label>
+          <input type="text" name="title" placeholder="What did you work on?" required>
+        </div>
+        <div class="field">
+          <label>Body</label>
+          <textarea name="body" rows="8" placeholder="Details, code snippets, links, decisions..." required></textarea>
+        </div>
+        <div class="field">
+          <label>Tags <span class="hint">comma separated</span></label>
+          <input type="text" name="tags" placeholder="bug, design, refactor">
+        </div>
+        <div class="field">
+          <label>Attached files <span class="hint">filenames, one per line</span></label>
+          <textarea name="files" rows="3" placeholder="screenshot.png&#10;notes.md"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="modal-cancel">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
