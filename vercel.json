@@ -1,8 +1,11 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/index.ts", "use": "@vercel/node", "includeFiles": ["public/**", "data/**"] }
-  ],
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "public/**",
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index" }
   ]

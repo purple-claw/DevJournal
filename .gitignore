@@ -39,3 +39,4 @@ Thumbs.db
 
 # OS temp
 .DS_Store
+.vercel
