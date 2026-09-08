@@ -17,12 +17,10 @@
       <span class="brand-sub">development journal</span>
     </button>
     <nav class="topnav">
-      <button class="nav-btn" data-view="home">Timeline</button>
+      <button class="nav-btn active" data-view="home">Timeline</button>
       <button class="nav-btn" data-view="calendar">Calendar</button>
     </nav>
     <div class="topbar-meta">
-      <span class="date" id="today"></span>
-      <span class="score" id="score-pill">—</span>
       <button class="btn" id="new-btn">+ new entry</button>
     </div>
   </header>
@@ -30,25 +28,36 @@
   <!-- ═══════ HOME VIEW ═══════ -->
   <main class="container view" id="view-home">
     <section class="hero">
-      <div class="score-block">
-        <div class="score-number" id="score-num">0</div>
-        <div class="score-label">productivity</div>
+      <div class="hero-tagline">
+        <p class="tagline-line tagline-main">Nithin's Professional Development Journal.</p>
+        <p class="tagline-line tagline-sub">Yes, only him. No, you can't see it. But here you are.</p>
       </div>
-      <div class="score-reason" id="score-reason">No entries today.</div>
-      <div class="score-stats">
-        <span><b id="stat-count">0</b> entries</span>
-        <span><b id="stat-chars">0</b> chars</span>
-        <span><b id="stat-tags">0</b> tags</span>
-        <span><b id="stat-span">0</b>h span</span>
+    </section>
+
+    <section class="widgets">
+      <div class="widget score-widget">
+        <div class="widget-label">Today</div>
+        <div class="score-ring-wrap">
+          <div class="score-number" id="score-num">0</div>
+          <div class="score-unit">/100</div>
+        </div>
+        <div class="score-reason" id="score-reason">No entries today.</div>
+        <div class="score-meta">
+          <span><b id="stat-count">0</b> entries</span>
+          <span><b id="stat-tags">0</b> tags</span>
+          <span><b id="stat-span">0</b>h span</span>
+        </div>
+      </div>
+
+      <div class="widget week-widget">
+        <div class="widget-label">Last 7 days</div>
+        <div class="week-grid" id="week-grid"></div>
       </div>
     </section>
 
     <div class="section-head">
       <h2 id="timeline-title">Timeline</h2>
-      <div class="section-actions">
-        <span class="count" id="entry-count"></span>
-        <button class="link-btn" id="clear-filter" hidden>clear filter ×</button>
-      </div>
+      <span class="count" id="entry-count"></span>
     </div>
 
     <section class="timeline" id="timeline"></section>
@@ -63,14 +72,39 @@
     </div>
     <div class="cal-grid" id="cal-grid"></div>
     <div class="cal-legend">
-      <span class="dot dot-0"></span> no entries
+      <span class="dot dot-0"></span> none
       <span class="dot dot-1"></span> 1
       <span class="dot dot-2"></span> 2–3
       <span class="dot dot-3"></span> 4+
     </div>
   </main>
 
-  <!-- ═══════ ENTRY DETAIL VIEW ═══════ -->
+  <!-- ═══════ DAY DETAIL VIEW (with scroll-progress bar) ═══════ -->
+  <main class="day-view hidden" id="view-day">
+    <header class="day-view-head">
+      <button class="back-btn" id="day-back">← timeline</button>
+      <div class="day-view-title">
+        <h2 id="day-view-date"></h2>
+        <div class="day-view-stats" id="day-view-stats"></div>
+      </div>
+    </header>
+
+    <div class="day-view-body">
+      <!-- Vertical scroll-progress time track -->
+      <aside class="time-track" aria-label="Time of day">
+        <div class="time-track-axis" id="time-track-axis"></div>
+        <div class="time-track-fill" id="time-track-fill"></div>
+        <div class="time-track-cursor" id="time-track-cursor">
+          <div class="time-track-cursor-dot"></div>
+          <div class="time-track-cursor-time" id="time-track-cursor-time">--:--</div>
+        </div>
+      </aside>
+
+      <div class="day-entries" id="day-entries"></div>
+    </div>
+  </main>
+
+  <!-- ═══════ ENTRY DETAIL VIEW (deep-link from timeline) ═══════ -->
   <main class="detail-view hidden" id="view-entry">
     <header class="detail-head">
       <button class="back-btn" id="detail-back">← back</button>
@@ -79,7 +113,7 @@
     <div class="detail-content" id="detail-content"></div>
   </main>
 
-  <!-- ═══════ MODAL (new/edit entry) ═══════ -->
+  <!-- ═══════ MODAL ═══════ -->
   <div class="modal" id="modal" hidden>
     <div class="modal-card">
       <div class="modal-head">
