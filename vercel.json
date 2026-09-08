@@ -2,8 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.ts": {
-      "includeFiles": "public/**",
-      "maxDuration": 10
+      "includeFiles": "public/**"
     }
   },
   "rewrites": [

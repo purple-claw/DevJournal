@@ -145,8 +145,9 @@
           <input type="text" name="tags" placeholder="bug, design, refactor">
         </div>
         <div class="field">
-          <label>Attached files <span class="hint">filenames, one per line</span></label>
-          <textarea name="files" rows="3" placeholder="screenshot.png&#10;notes.md"></textarea>
+          <label>Attach files <span class="hint">images, notes, logs — drag or browse</span></label>
+          <input type="file" id="file-input" name="files_input" multiple onchange="handleFiles(this)" style="font-family: var(--mono); font-size: 11px; color: var(--dim); padding: 8px 0; background: transparent; border: 1px dashed var(--line); border-radius: 2px; width: 100%; cursor: pointer;">
+          <div id="file-preview" style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;"></div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="modal-cancel">Cancel</button>

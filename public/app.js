@@ -183,6 +183,7 @@ function renderDayCard(date, dayEntries) {
         <div class="day-preview-title">${escapeHtml(first.title)}</div>
         <div class="day-preview-snippet">${escapeHtml(snippetOf(first.body))}</div>
         ${tags.length ? `<div class="day-tags">${tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+        ${first.files?.length ? `<div class="entry-file-preview">${first.files.map((f) => `<span class="entry-file">${escapeHtml(typeof f === "string" ? f : f.name)}</span>`).join("")}</div>` : ""}
       </div>
       <div class="day-card-arrow">→</div>
     </button>
@@ -609,10 +610,34 @@ function openModal(entry) {
     form.title.value = entry.title;
     form.body.value = entry.body;
     form.tags.value = (entry.tags || []).join(", ");
-    form.files.value = (entry.files || []).map((f) => typeof f === "string" ? f : f.name).join("\n");
+    // Rebuild file previews for edit mode from entry files
+    const preview = document.getElementById("file-preview");
+    if (preview) {
+      preview.innerHTML = "";
+      (entry.files || []).forEach((f) => {
+        const name = typeof f === "string" ? f : f.name || "file";
+        const card = document.createElement("div");
+        card.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:2px;background:var(--bg-1);font-family:var(--mono);font-size:11px;color:var(--fg);flex:1;min-width:160px;";
+        const icon = document.createElement("span");
+        const ext = (name.split(".").pop() || "").toLowerCase();
+        const iconChars = { img: "IMG", vid: "VID", aud: "AUD", pdf: "PDF", md: "MD", js: "JS", ts: "TS", py: "PY", rb: "RB", go: "GO", code: "CD", data: "DB", zip: "ZIP", file: "FILE" };
+        icon.textContent = iconChars[ext] || "FILE";
+        icon.style.cssText = "width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line-2);font-size:9px;color:var(--dim);flex-shrink:0;";
+        const meta = document.createElement("div");
+        meta.style.cssText = "display:flex;flex-direction:column;min-width:0;";
+        meta.innerHTML = `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">` + escapeHtml(name) + `</span>`;
+        card.append(icon, meta);
+        preview.appendChild(card);
+      });
+    }
   } else {
     form.date.value = state.filterDate || today();
     form.time.value = nowTime();
+    // Reset file input
+    const fileInputEl = document.getElementById("file-input");
+    if (fileInputEl) fileInputEl.value = "";
+    const preview = document.getElementById("file-preview");
+    if (preview) preview.innerHTML = "";
   }
   modal.hidden = false;
   setTimeout(() => form.title.focus(), 50);
@@ -650,13 +675,18 @@ function wireEvents() {
 
   $("#entry-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    // Read selected files
+    const fileInputEl = document.getElementById("file-input");
+    const fileList = Array.from(fileInputEl ? (fileInputEl.files ? fileInputEl.files : []) : []);
+    const filesData = fileList.map((f) => ({ name: f.name, size: f.size, type: f.type || "unknown" }));
+    // If no preview yet for images, build one asynchronously (optional enhancement)
     const data = {
       date: form.date.value,
       time: form.time.value,
       title: form.title.value.trim(),
       body: form.body.value,
       tags: form.tags.value.split(",").map((s) => s.trim()).filter(Boolean),
-      files: form.files.value.split("\n").map((s) => s.trim()).filter(Boolean),
+      files: fileList.map((f) => f.name),
     };
     try {
       if (form.id.value) {
@@ -712,6 +742,45 @@ async function refresh() {
     }
   } catch (e) {
     console.error(e);
+  }
+}
+
+
+function handleFiles(input) {
+  const preview = document.getElementById("file-preview");
+  if (!preview) return;
+  preview.innerHTML = "";
+  for (const file of Array.from(input.files || [])) {
+    const card = document.createElement("div");
+    card.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:2px;background:var(--bg-1);font-family:var(--mono);font-size:11px;color:var(--fg);flex:1;min-width:160px;";
+    const icon = document.createElement("span");
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const iconChars = { img: "IMG", vid: "VID", aud: "AUD", pdf: "PDF", md: "MD", js: "JS", ts: "TS", py: "PY", rb: "RB", go: "GO", code: "CD", data: "DB", zip: "ZIP", file: "FILE" };
+    icon.textContent = iconChars[ext] || "FILE";
+    icon.style.cssText = "width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line-2);font-size:9px;color:var(--dim);flex-shrink:0;";
+    const meta = document.createElement("div");
+    meta.style.cssText = "display:flex;flex-direction:column;min-width:0;";
+    meta.innerHTML = `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">` + escapeHtml(file.name) + `</span><span style="font-size:9px;color:var(--mute);margin-top:2px;">` + ((file.size / 1024).toFixed(1)) + ` KB · ` + (file.type || "unknown") + `</span>`;
+    card.append(icon, meta);
+    preview.appendChild(card);
+    if (file.type && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const thumb = document.createElement("img");
+        thumb.src = e.target.result;
+        thumb.style.cssText = "width:44px;height:44px;object-fit:cover;border-radius:2px;border:1px solid var(--line);margin-top:6px;";
+        card.appendChild(thumb);
+      };
+      reader.readAsDataURL(file);
+    }
+    if (file.type && (file.type.startsWith("text/") || file.name.endsWith(".md") || file.name.endsWith(".txt") || file.name.endsWith(".js") || file.name.endsWith(".ts"))) {
+      const reader2 = new FileReader();
+      reader2.onload = (e2) => {
+        const snippet = (e2.target.result || "").toString().slice(0, 180);
+        meta.innerHTML += `<span style="font-size:10px;color:var(--mute);margin-top:4px;">` + escapeHtml(snippet) + (snippet.length >= 180 ? "..." : "") + `</span>`;
+      };
+      reader2.readAsText(file);
+    }
   }
 }
 
