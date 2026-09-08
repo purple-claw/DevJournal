@@ -1,1 +1,9 @@
-{"version":2,"builds":[{"src":"api/index.ts","use":"@vercel/node"}],"rewrites":[{"source":"/(.*)","destination":"/api/index"}]}
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/index.ts", "use": "@vercel/node", "includeFiles": ["public/**", "data/**"] }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ]
+}

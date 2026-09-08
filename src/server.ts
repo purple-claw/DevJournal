@@ -9,12 +9,13 @@ import fs from "node:fs";
 import path from "node:path";
 import https from "node:https";
 import { URL } from "node:url";
+import { computeProductivityScore, TimeSeriesIndex } from "./algorithms/productivity.js";
 
 /* ── Config ───────────────────────────────── */
 
 const PORT = parseInt(process.env.PORT || "3002", 10);
 const HOST = process.env.HOST || "0.0.0.0";
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = process.env.VERCEL ? path.join("/tmp", ".devjavu") : path.join(process.cwd(), "data");
 const LOCAL_FILE = path.join(DATA_DIR, "log.json");
 const TOKENS_FILE = path.join(DATA_DIR, "tokens.json");
 
@@ -268,7 +269,7 @@ function escapeHtml(s: string): string {
 export function createApp() {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
-  const publicDir = path.join(process.cwd(), "public");
+  const publicDir = path.resolve(process.cwd(), "public");
   app.use(express.static(publicDir));
 
   function now() {
@@ -336,6 +337,20 @@ export function createApp() {
       const entries = (await storage.list()).filter((e) => e.id !== req.params.id);
       await storage.save(entries);
       res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/search", async (req: Request, res: Response) => {
+    try {
+      const q = (req.query.q as string) || "";
+      if (!q.trim()) return res.json({ query: q, results: [] });
+      const entries = await storage.list();
+      const index = new TimeSeriesIndex();
+      index.build(entries);
+      const results = index.search(q);
+      res.json({ query: q, results: results.slice(0, 20) });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
