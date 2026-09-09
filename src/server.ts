@@ -5,6 +5,7 @@
    ───────────────────────────────────────────── */
 
 import express, { Request, Response } from "express";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import https from "node:https";
@@ -23,6 +24,9 @@ const TOKENS_FILE = path.join(DATA_DIR, "tokens.json");
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `http://localhost:${PORT}/auth/callback`;
+const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+  || (process.env.GOOGLE_SERVICE_ACCOUNT_JSON_FILE ? fs.readFileSync(process.env.GOOGLE_SERVICE_ACCOUNT_JSON_FILE, "utf-8") : "");
+const GOOGLE_DRIVE_SHARE_WITH = process.env.GOOGLE_DRIVE_SHARE_WITH || "";
 const STORAGE_MODE = (process.env.STORAGE_MODE || "local") as "local" | "drive";
 const DRIVE_FOLDER = "DevJavu";
 const DRIVE_FILE = "log.json";
@@ -78,6 +82,7 @@ function saveTokensToFile(tokens: Tokens): void {
 }
 
 function hasTokens(): boolean {
+  if (GOOGLE_SERVICE_ACCOUNT_JSON) return true;
   const t = tokensFromEnv() || tokensFromFile();
   return !!(t?.access_token || t?.refresh_token);
 }
@@ -102,7 +107,43 @@ const localStorage: Storage = {
 
 /* ── Google Drive token handling ──────────── */
 
+/* Service-account auth: no consent screen, no refresh tokens, no expiry pain.
+   GOOGLE_SERVICE_ACCOUNT_JSON contains the full downloaded key JSON. */
+let saCache: { token: string; expiry: number } | null = null;
+
+async function serviceAccountAccessToken(): Promise<string> {
+  if (saCache && saCache.expiry > Date.now() + 60_000) return saCache.token;
+  const sa = JSON.parse(GOOGLE_SERVICE_ACCOUNT_JSON) as { client_email: string; private_key: string };
+  const now = Math.floor(Date.now() / 1000);
+  const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const claimSet = { iss: sa.client_email, scope: "https://www.googleapis.com/auth/drive", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 };
+  const unsigned = `${b64({ alg: "RS256", typ: "JWT" })}.${b64(claimSet)}`;
+  const signature = crypto.createSign("RSA-SHA256").update(unsigned).sign(sa.private_key.replace(/\\n/g, "\n"), "base64url");
+  const assertion = `${unsigned}.${signature}`;
+  const body = new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }).toString();
+  const parsed = await new Promise<any>((resolve, reject) => {
+    const req = https.request(
+      { host: "oauth2.googleapis.com", path: "/token", method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": Buffer.byteLength(body) } },
+      (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+  if (parsed.error || !parsed.access_token) throw new Error(`Service account auth failed: ${parsed.error_description || parsed.error}`);
+  saCache = { token: parsed.access_token, expiry: Date.now() + (parsed.expires_in || 3600) * 1000 };
+  return saCache.token;
+}
+
 async function resolveAccessToken(): Promise<string> {
+  if (GOOGLE_SERVICE_ACCOUNT_JSON) return serviceAccountAccessToken();
+
   const envTokens = tokensFromEnv();
   const fileTokens = tokensFromFile();
 
@@ -219,6 +260,10 @@ async function getOrCreateFolder(token: string): Promise<string> {
   }
   const create = await driveApi("/files", "POST", token, { name: DRIVE_FOLDER, mimeType: "application/vnd.google-apps.folder" }, { fields: "id" });
   cachedFolderId = create.id;
+  if (GOOGLE_DRIVE_SHARE_WITH) {
+    // best-effort: make the journal visible in the owner's Drive under "Shared with me"
+    driveApi(`/files/${create.id}/permissions`, "POST", token, { type: "user", role: "writer", emailAddress: GOOGLE_DRIVE_SHARE_WITH }, { fields: "id" }).catch(() => {});
+  }
   return cachedFolderId;
 }
 
