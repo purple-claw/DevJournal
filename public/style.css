@@ -200,7 +200,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 
 .day-progress { position: absolute; top: 0; bottom: 0; left: 68px; z-index: 2; width: 42px; display: flex; justify-content: center; pointer-events: none; }
 .day-progress-track { position: sticky; top: 150px; width: 2px; height: min(62vh, 460px); margin-top: 0; border-radius: 999px; background: rgba(255,255,255,0.14); overflow: hidden; }
-.day-progress-fill { display: block; width: 100%; height: calc(var(--day-progress, 0) * 100%); border-radius: inherit; background: var(--fg); box-shadow: 0 0 10px rgba(255,255,255,0.85); transition: height 180ms ease-out; }
+.day-progress-fill { display: block; position: absolute; top: calc(var(--day-progress, 0) * (100% - 16px)); left: 50%; width: 16px; height: 16px; margin: 0; border: 2px solid var(--bg); border-radius: 50%; background: var(--fg); box-shadow: 0 0 10px rgba(255,255,255,0.85); transform: translateX(-50%); transition: top 180ms ease-out; }
+.day-progress-fill::after { content: ""; position: absolute; inset: -7px; border: 1px solid rgba(255,255,255,0.7); border-radius: 50%; opacity: 0; animation: progressRipple 1.8s ease-out infinite; }
+@keyframes progressRipple {
+  0% { transform: scale(0.55); opacity: 0.75; }
+  70%, 100% { transform: scale(1.35); opacity: 0; }
+}
 
 .day-entries { position: relative; }
 .day-entries::before { content: none; }
