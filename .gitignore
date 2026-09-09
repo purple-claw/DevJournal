@@ -16,6 +16,9 @@ data/
 .env.local
 .env.*.local
 
+# Google OAuth client secrets
+client_secret_*.json
+
 # Logs
 *.log
 npm-debug.log*

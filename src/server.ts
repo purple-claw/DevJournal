@@ -78,7 +78,8 @@ function saveTokensToFile(tokens: Tokens): void {
 }
 
 function hasTokens(): boolean {
-  return !!(tokensFromEnv() || tokensFromFile());
+  const t = tokensFromEnv() || tokensFromFile();
+  return !!(t?.access_token || t?.refresh_token);
 }
 
 /* ── Local JSON storage ───────────────────── */
@@ -105,15 +106,18 @@ async function resolveAccessToken(): Promise<string> {
   const envTokens = tokensFromEnv();
   const fileTokens = tokensFromFile();
 
-  // Prefer env access token if fresh enough is unknown — env always freshest at deploy
-  if (envTokens?.access_token && envTokens.access_token.length > 20) {
-    return envTokens.access_token;
+  // Use an access token only when we know it is still fresh
+  for (const t of [envTokens, fileTokens]) {
+    if (t?.access_token && t.expiry_date && t.expiry_date > Date.now() + 60_000) {
+      return t.access_token;
+    }
   }
-  if (fileTokens && fileTokens.expiry_date && fileTokens.expiry_date > Date.now() + 60_000) {
-    return fileTokens.access_token;
-  }
+
   const refreshToken = envTokens?.refresh_token || fileTokens?.refresh_token;
   if (!refreshToken) {
+    // No refresh token — fall back to whatever access token exists (may fail)
+    const fallback = envTokens?.access_token || fileTokens?.access_token;
+    if (fallback) return fallback;
     throw new Error("No Drive tokens. Set GOOGLE_REFRESH_TOKEN (Vercel) or visit /auth/start locally.");
   }
   return refreshAccessToken(refreshToken);
@@ -302,6 +306,7 @@ export function createApp() {
   app.use(express.json({ limit: "1mb" }));
   const publicDir = path.resolve(process.cwd(), "public");
   app.use(express.static(publicDir));
+  app.get("/privacy", (_req, res) => res.sendFile(path.join(publicDir, "privacy.html")));
 
   function now() {
     const d = new Date();

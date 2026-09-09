@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevJavu — Privacy Policy</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --fg: #ffffff;
+      --mute: #8d8d8d;
+      --line: #2a2a2a;
+      --sans: 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 48px 20px;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--sans);
+      line-height: 1.6;
+      max-width: 680px;
+      margin-inline: auto;
+    }
+    h1 { font-size: 20px; letter-spacing: -0.02em; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mute); margin-top: 32px; }
+    p, li { font-size: 14px; color: var(--fg); }
+    .muted { color: var(--mute); }
+    code { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); padding: 1px 5px; border-radius: 2px; }
+    a { color: var(--fg); }
+    footer { margin-top: 48px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 12px; color: var(--mute); font-family: var(--mono); }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="muted">DevJavu — developer journal. Last updated: September 9, 2026.</p>
+
+  <h2>What DevJavu stores</h2>
+  <p>DevJavu stores the journal entries you create: title, body text, date, time, tags, and file names you attach to an entry.</p>
+
+  <h2>Where your data lives</h2>
+  <p>All journal data is saved to <strong>your own Google Drive</strong>, in a folder named <code>DevJavu</code>, in a single JSON file (<code>log.json</code>). DevJavu does not store your journal data on its own servers. Your entries remain under your control and can be deleted at any time by removing the file or folder from your Drive.</p>
+
+  <h2>Google account access</h2>
+  <p>DevJavu requests read and write access only to files it creates in your Drive (scope <code>https://www.googleapis.com/auth/drive.file</code>). It cannot see or modify any other files in your Drive. OAuth tokens are used solely to store and load your journal file and are never shared with third parties.</p>
+
+  <h2>What DevJavu does not do</h2>
+  <ul>
+    <li>No analytics or tracking</li>
+    <li>No advertising</li>
+    <li>No selling or sharing of data</li>
+    <li>No server-side storage of your journal content</li>
+  </ul>
+
+  <h2>Data deletion</h2>
+  <p>Deleting an entry inside DevJavu removes it from your journal file in Drive. To remove everything, delete the <code>DevJavu</code> folder from your Google Drive, or revoke the app's access at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: <a href="mailto:hobbiest2027@gmail.com">hobbiest2027@gmail.com</a></p>
+
+  <footer>DevJavu · privacy policy</footer>
+</body>
+</html>
