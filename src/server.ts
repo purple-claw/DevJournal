@@ -41,8 +41,16 @@ interface Entry {
   title: string;
   body: string;
   tags: string[];
-  files: string[];
+  files: Array<string | Attachment>;
   createdAt: string;
+}
+
+interface Attachment {
+  name: string;
+  type: string;
+  size: number;
+  content: string;
+  encoding: "text" | "data-url";
 }
 
 interface Storage {
@@ -328,14 +336,24 @@ export async function resolvePort(port: number): Promise<number> {
   return port;
 }
 
-export function validateEntryInput(payload: any): { ok: true; value: { title: string; body: string; tags: string[]; files: string[]; date: string; time: string }; } | { ok: false; error: string } {
+export function validateEntryInput(payload: any): { ok: true; value: { title: string; body: string; tags: string[]; files: Array<string | Attachment>; date: string; time: string }; } | { ok: false; error: string } {
   const title = String(payload?.title ?? "").trim();
   const body = String(payload?.body ?? "").trim();
   if (!title) return { ok: false, error: "title required" };
   if (!body) return { ok: false, error: "body required" };
 
   const tags = Array.isArray(payload?.tags) ? payload.tags.map((t: any) => String(t).trim()).filter(Boolean) : [];
-  const files = Array.isArray(payload?.files) ? payload.files.map((f: any) => String(f).trim()).filter(Boolean) : [];
+  const files = Array.isArray(payload?.files) ? payload.files.map((f: any) => {
+    if (typeof f === "string") return f.trim();
+    if (!f || typeof f.name !== "string" || typeof f.content !== "string") return null;
+    return {
+      name: f.name.trim(),
+      type: String(f.type || "application/octet-stream"),
+      size: Number(f.size || 0),
+      content: f.content,
+      encoding: f.encoding === "data-url" ? "data-url" : "text",
+    } satisfies Attachment;
+  }).filter(Boolean) as Array<string | Attachment> : [];
   const date = String(payload?.date || new Date().toISOString().slice(0, 10)).trim();
   const time = String(payload?.time || new Date().toTimeString().slice(0, 5)).trim();
 
@@ -440,7 +458,7 @@ export function createApp() {
       if (!q.trim()) return res.json({ query: q, results: [] });
       const entries = await storage.list();
       const index = new TimeSeriesIndex();
-      index.build(entries);
+      index.build(entries as any);
       const results = index.search(q);
       res.json({ query: q, results: results.slice(0, 20) });
     } catch (e: any) {

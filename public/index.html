@@ -122,6 +122,15 @@
       </form>
     </div>
   </div>
+  <div class="modal" id="preview-modal" hidden>
+    <div class="modal-card preview-card">
+      <div class="modal-head">
+        <span class="modal-title" id="preview-title">Attachment preview</span>
+        <button class="icon-btn" id="preview-close" aria-label="Close">×</button>
+      </div>
+      <div class="preview-body" id="preview-body"></div>
+    </div>
+  </div>
   <div class="modal" id="modal" hidden>
     <div class="modal-card">
       <div class="modal-head">
@@ -154,7 +163,7 @@
         </div>
         <div class="field">
           <label>Attach files <span class="hint">images, notes, logs — drag or browse</span></label>
-          <input type="file" id="file-input" name="files_input" multiple onchange="handleFiles(this)" style="font-family: var(--mono); font-size: 11px; color: var(--dim); padding: 8px 0; background: transparent; border: 1px dashed var(--line); border-radius: 2px; width: 100%; cursor: pointer;">
+          <input type="file" id="file-input" name="files_input" multiple accept="image/*,.txt,.md,.markdown,.log,.js,.jsx,.ts,.tsx,.mjs,.cjs,.py,.rb,.go,.rs,.java,.kt,.swift,.c,.cpp,.h,.hpp,.json,.xml,.html,.css,.scss,.sql,.sh,.bash,.yaml,.yml,.toml" onchange="handleFiles(this)" style="font-family: var(--mono); font-size: 11px; color: var(--dim); padding: 8px 0; background: transparent; border: 1px dashed var(--line); border-radius: 2px; width: 100%; cursor: pointer;">
           <div id="file-preview" style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;"></div>
         </div>
         <div class="modal-actions">

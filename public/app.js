@@ -227,6 +227,26 @@ function renderDayCard(date, dayEntries) {
   `;
 }
 
+function renderTimelineEntry(entry) {
+  const isToday = entry.date === today();
+  return `
+    <button class="day-card timeline-entry-card${isToday ? " today" : ""}" data-date="${entry.date}">
+      <div class="day-time">
+        <span class="day-time-dow">${formatDayDow(entry.date)}</span>
+        <span class="day-time-day">${formatDayNum(entry.date)}</span>
+      </div>
+      <div class="day-main">
+        <div class="day-label-row">
+          <span class="day-name">${escapeHtml(entry.title)}</span>
+          <span class="day-time-range">${escapeHtml(entry.time)}</span>
+        </div>
+        <div class="timeline-snippet">${escapeHtml(snippetOf(entry.body))}</div>
+      </div>
+      <div class="day-card-arrow">→</div>
+    </button>
+  `;
+}
+
 function renderTimeline(entries) {
   const root = $("#timeline");
   if (!entries.length) {
@@ -234,10 +254,11 @@ function renderTimeline(entries) {
     $("#entry-count").textContent = "";
     return;
   }
-  const totalDays = new Set(entries.map((e) => e.date)).size;
-  $("#entry-count").textContent = `${entries.length} entries · ${totalDays} days`;
-  const groups = groupByDay(entries);
-  root.innerHTML = groups.map(([date, day]) => renderDayCard(date, day)).join("");
+  const recent = [...entries].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 4);
+  $("#entry-count").textContent = entries.length > recent.length
+    ? `showing ${recent.length} of ${entries.length} entries`
+    : `${recent.length} entries`;
+  root.innerHTML = recent.map(renderTimelineEntry).join("");
 }
 
 function applyFilter() {
@@ -378,7 +399,7 @@ function renderDayView(date) {
     const fileHtml = e.files?.length
       ? `<div class="day-entry-files">${e.files.map((f) => {
           const name = typeof f === "string" ? f : f.name;
-          return `<div class="file-card"><div class="file-icon">${fileIcon(name)}</div><div class="file-meta"><span class="file-name">${escapeHtml(name)}</span><span class="file-size">attached</span></div></div>`;
+          return `<button class="file-card" type="button" data-file='${escapeHtml(JSON.stringify(f))}'><div class="file-icon">${fileIcon(name)}</div><div class="file-meta"><span class="file-name">${escapeHtml(name)}</span><span class="file-size">preview</span></div></button>`;
         }).join("")}</div>`
       : "";
     const tagHtml = e.tags?.length
@@ -389,6 +410,10 @@ function renderDayView(date) {
         <div class="day-entry-head">
           <time class="day-entry-time">${escapeHtml(e.time)}</time>
           <h2 class="day-entry-title">${escapeHtml(e.title)}</h2>
+          <div class="day-entry-actions">
+            <button class="entry-action" type="button" data-edit-entry="${e.id}">Edit</button>
+            <button class="entry-action danger" type="button" data-delete-entry="${e.id}">Delete</button>
+          </div>
         </div>
         <div class="day-entry-body">${parseMarkdown(e.body)}</div>
         ${fileHtml}${tagHtml}
@@ -410,6 +435,57 @@ function fileIcon(name) {
   if (["json","xml","yaml","yml","toml"].includes(ext)) return "data";
   if (["zip","tar","gz","7z","rar"].includes(ext)) return "zip";
   return "file";
+}
+
+function attachmentName(file) {
+  return typeof file === "string" ? file : (file?.name || "attachment");
+}
+
+function openAttachment(rawFile) {
+  let file = rawFile;
+  try { file = JSON.parse(rawFile); } catch { /* filename-only legacy attachment */ }
+  const name = attachmentName(file);
+  const body = $("#preview-body");
+  $("#preview-title").textContent = name;
+  body.innerHTML = "";
+  if (typeof file === "string" || !file.content) {
+    body.innerHTML = `<div class="empty"><div class="empty-title">Preview unavailable</div><p>This older attachment only has a filename saved.</p></div>`;
+  } else if (file.encoding === "data-url" || String(file.type).startsWith("image/")) {
+    const image = document.createElement("img");
+    image.className = "attachment-image";
+    image.alt = name;
+    image.src = file.content;
+    body.appendChild(image);
+  } else {
+    const code = document.createElement("pre");
+    code.className = "attachment-code";
+    const ext = name.split(".").pop()?.toLowerCase() || "";
+    const codeTypes = ["js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "rb", "go", "rs", "java", "kt", "swift", "c", "cpp", "h", "hpp", "json", "xml", "html", "css", "scss", "sql", "sh", "bash", "yaml", "yml", "toml", "md", "markdown", "txt", "log"];
+    code.innerHTML = codeTypes.includes(ext)
+      ? tokenize(file.content, [["com", /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)/g], ["str", /(["'`])(?:\\.|(?!\1).)*\1/g], ["num", /\b(\d+\.?\d*)\b/g], ["kw", /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|new|this|async|await|try|catch|throw|true|false|null|undefined|def|print|fn|pub|use|struct|SELECT|FROM|WHERE)\b/g]])
+      : escapeHtml(file.content);
+    body.appendChild(code);
+  }
+  $("#preview-modal").hidden = false;
+}
+
+function closePreview() {
+  $("#preview-modal").hidden = true;
+  $("#preview-body").innerHTML = "";
+}
+
+async function deleteEntry(id) {
+  const entry = state.entries.find((item) => item.id === id);
+  if (!entry || !window.confirm(`Delete the ${entry.time} entry “${entry.title}”?`)) return;
+  try {
+    await api("DELETE", "/api/entries/" + encodeURIComponent(id));
+    state.entries = state.entries.filter((item) => item.id !== id);
+    applyFilter();
+    renderWeek();
+    renderDayView(entry.date);
+  } catch (err) {
+    alert("Delete failed: " + err.message);
+  }
 }
 
 /* ── Entry detail (legacy) ─────────────── */
@@ -439,7 +515,7 @@ function renderEntryDetail(id) {
     const fileHtml = e.files?.length
       ? `<div class="detail-files">${e.files.map((f) => {
           const name = typeof f === "string" ? f : f.name;
-          return `<div class="file-card"><div class="file-icon">${fileIcon(name)}</div><div class="file-meta"><span class="file-name">${escapeHtml(name)}</span><span class="file-size">attached</span></div></div>`;
+          return `<button class="file-card" type="button" data-file='${escapeHtml(JSON.stringify(f))}'><div class="file-icon">${fileIcon(name)}</div><div class="file-meta"><span class="file-name">${escapeHtml(name)}</span><span class="file-size">preview</span></div></button>`;
         }).join("")}</div>`
       : "";
     const tagHtml = e.tags?.length
@@ -496,6 +572,7 @@ function closeTokenModal() {
 
 function openModal(entry) {
   form.reset();
+  form.dataset.existingFiles = JSON.stringify(entry?.files || []);
   $("#modal-title").textContent = entry ? "Edit entry" : "New entry";
   if (entry) {
     form.entryId.value = entry.id;
@@ -541,12 +618,14 @@ function closeModal() {
   modal.hidden = true;
   form.reset();
   delete form.dataset.entryToken;
+  delete form.dataset.existingFiles;
 }
 
 function wireEvents() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !modal.hidden) closeModal();
     if (e.key === "Escape" && !tokenModal.hidden) closeTokenModal();
+    if (e.key === "Escape" && !$("#preview-modal").hidden) closePreview();
     if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); requestNewEntry(); }
     if (e.key === "Escape" && (parseHash().view === "day" || parseHash().view === "entry")) navigate("#/");
   });
@@ -571,6 +650,8 @@ function wireEvents() {
   $("#modal-cancel")?.addEventListener("click", closeModal);
   $("#token-modal-close")?.addEventListener("click", closeTokenModal);
   $("#token-modal-cancel")?.addEventListener("click", closeTokenModal);
+  $("#preview-close")?.addEventListener("click", closePreview);
+  $("#preview-modal")?.addEventListener("click", (e) => { if (e.target.id === "preview-modal") closePreview(); });
 
   tokenForm?.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -589,15 +670,15 @@ function wireEvents() {
     // Read selected files
     const fileInputEl = document.getElementById("file-input");
     const fileList = Array.from(fileInputEl ? (fileInputEl.files ? fileInputEl.files : []) : []);
-    const filesData = fileList.map((f) => ({ name: f.name, size: f.size, type: f.type || "unknown" }));
-    // If no preview yet for images, build one asynchronously (optional enhancement)
+    const uploadedFiles = await Promise.all(fileList.map(readAttachment));
+    const existingFiles = JSON.parse(form.dataset.existingFiles || "[]");
     const data = {
       date: form.date.value,
       time: form.time.value,
       title: form.title.value.trim(),
       body: form.body.value,
       tags: form.tags.value.split(",").map((s) => s.trim()).filter(Boolean),
-      files: fileList.map((f) => f.name),
+      files: uploadedFiles.length ? uploadedFiles : existingFiles,
       token: form.dataset.entryToken,
     };
     try {
@@ -612,6 +693,31 @@ function wireEvents() {
     } catch (err) {
       alert("Save failed: " + err.message);
     }
+  });
+
+  $("#day-entries")?.addEventListener("click", (e) => {
+    const file = e.target.closest("[data-file]");
+    if (file) {
+      e.stopPropagation();
+      openAttachment(file.dataset.file);
+      return;
+    }
+    const edit = e.target.closest("[data-edit-entry]");
+    if (edit) {
+      e.stopPropagation();
+      const entry = state.entries.find((item) => item.id === edit.dataset.editEntry);
+      if (entry) openModal(entry);
+      return;
+    }
+    const remove = e.target.closest("[data-delete-entry]");
+    if (remove) {
+      e.stopPropagation();
+      deleteEntry(remove.dataset.deleteEntry);
+    }
+  });
+  $("#detail-content")?.addEventListener("click", (e) => {
+    const file = e.target.closest("[data-file]");
+    if (file) openAttachment(file.dataset.file);
   });
 
   // Timeline: clicking a day card navigates to day view
@@ -658,6 +764,22 @@ async function refresh() {
   }
 }
 
+function readAttachment(file) {
+  return new Promise((resolve) => {
+    const image = file.type.startsWith("image/");
+    const reader = new FileReader();
+    reader.onload = () => resolve({
+      name: file.name,
+      type: file.type || "text/plain",
+      size: file.size,
+      content: String(reader.result || ""),
+      encoding: image ? "data-url" : "text",
+    });
+    reader.onerror = () => resolve({ name: file.name, type: file.type || "application/octet-stream", size: file.size, content: "", encoding: "text" });
+    if (image) reader.readAsDataURL(file);
+    else reader.readAsText(file);
+  });
+}
 
 function handleFiles(input) {
   const preview = document.getElementById("file-preview");
