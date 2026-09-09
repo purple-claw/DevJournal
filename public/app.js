@@ -135,10 +135,10 @@ function updateDayProgress() {
   const entries = $$("#day-entries .day-entry-block");
   if (!view || !entries.length || view.classList.contains("hidden")) return;
 
-  const bounds = $("#day-entries").getBoundingClientRect();
   const viewportPoint = window.innerHeight * 0.42;
   const readingPosition = viewportPoint;
-  const progress = Math.max(0, Math.min(1, (readingPosition - bounds.top) / Math.max(1, bounds.height)));
+  const scrollRange = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  const progress = Math.max(0, Math.min(1, window.scrollY / scrollRange));
   view.style.setProperty("--day-progress", progress.toFixed(3));
   let active = entries[entries.length - 1];
   for (const entry of entries) {
@@ -152,10 +152,6 @@ function updateDayProgress() {
       break;
     }
   }
-  const trackTop = $(".day-progress-track")?.getBoundingClientRect().top || 0;
-  const activeBottom = active.getBoundingClientRect().bottom;
-  const fillEnd = Math.min(window.innerHeight, activeBottom);
-  view.style.setProperty("--day-progress-px", `${Math.max(0, fillEnd - trackTop)}px`);
   entries.forEach((entry) => entry.classList.toggle("is-active", entry === active));
 }
 
@@ -407,16 +403,21 @@ function renderDayView(date) {
       : "";
     return `
       <article class="day-entry-block" data-time="${e.time}">
-        <div class="day-entry-head">
+        <div class="day-entry-time-column">
           <time class="day-entry-time">${escapeHtml(e.time)}</time>
-          <h2 class="day-entry-title">${escapeHtml(e.title)}</h2>
-          <div class="day-entry-actions">
-            <button class="entry-action" type="button" data-edit-entry="${e.id}">Edit</button>
-            <button class="entry-action danger" type="button" data-delete-entry="${e.id}">Delete</button>
-          </div>
         </div>
-        <div class="day-entry-body">${parseMarkdown(e.body)}</div>
-        ${fileHtml}${tagHtml}
+        <div class="day-entry-spine" aria-hidden="true"></div>
+        <div class="day-entry-content">
+          <div class="day-entry-head">
+            <h2 class="day-entry-title">${escapeHtml(e.title)}</h2>
+            <div class="day-entry-actions">
+              <button class="entry-action" type="button" data-edit-entry="${e.id}">Edit</button>
+              <button class="entry-action danger" type="button" data-delete-entry="${e.id}">Delete</button>
+            </div>
+          </div>
+          <div class="day-entry-body">${parseMarkdown(e.body)}</div>
+          ${fileHtml}${tagHtml}
+        </div>
       </article>
     `;
   }).join("");

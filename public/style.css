@@ -187,7 +187,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
    DAY DETAIL VIEW
    ═══════════════════════════════════════════════ */
 
-.day-view { --day-progress: 0; max-width: 1100px; margin: 0 auto; padding: 48px 32px 100px; animation: viewIn 0.35s ease-out; }
+.day-view { --day-progress: 0; max-width: 1280px; margin: 0 auto; padding: 48px 32px 100px; animation: viewIn 0.35s ease-out; }
 .day-view-head { display: grid; grid-template-columns: auto 1fr; align-items: end; gap: 28px; margin-bottom: 48px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
 .day-view-title h2 { font-family: var(--serif); font-size: clamp(30px, 4vw, 48px); font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; }
 .day-view-stats { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.08em; margin-top: 12px; display: flex; gap: 18px; flex-wrap: wrap; text-transform: uppercase; }
@@ -196,17 +196,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .back-btn { background: transparent; border: 1px solid var(--line-2); color: var(--dim); font-family: var(--sans); font-size: 13px; padding: 8px 16px; cursor: pointer; border-radius: 2px; transition: all 0.15s; white-space: nowrap; }
 .back-btn:hover { color: var(--fg); border-color: var(--fg); }
 
-.day-view-body { position: relative; padding-left: 84px; }
+.day-view-body { position: relative; padding-left: 0; }
 
-.day-progress { position: absolute; top: 0; bottom: 0; left: 0; width: 52px; display: flex; flex-direction: column; align-items: center; }
-.day-progress-track { position: sticky; top: 150px; width: 1px; height: calc(100vh - 150px); background: var(--line); overflow: visible; }
-.day-progress-fill { display: block; width: 3px; height: var(--day-progress-px, 0px); margin-left: -1px; background: var(--fg); box-shadow: 0 0 8px rgba(255,255,255,0.85); transition: height 180ms ease-out; }
+.day-progress { position: absolute; top: 0; bottom: 0; left: 68px; z-index: 2; width: 42px; display: flex; justify-content: center; pointer-events: none; }
+.day-progress-track { position: sticky; top: 150px; width: 2px; height: min(62vh, 460px); margin-top: 0; border-radius: 999px; background: rgba(255,255,255,0.14); overflow: hidden; }
+.day-progress-fill { display: block; width: 100%; height: calc(var(--day-progress, 0) * 100%); border-radius: inherit; background: var(--fg); box-shadow: 0 0 10px rgba(255,255,255,0.85); transition: height 180ms ease-out; }
 
 .day-entries { position: relative; }
 .day-entries::before { content: none; }
 
 .day-entry-block {
   position: relative;
+  display: grid;
+  grid-template-columns: max-content 42px minmax(0, 1fr);
   padding: 28px 0 32px;
   border-top: 1px solid var(--line);
   opacity: 0.62;
@@ -214,14 +216,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 }
 .day-entry-block:first-child { border-top: none; }
 .day-entry-block.is-active { opacity: 1; box-shadow: 0 0 22px rgba(255,255,255,0.07); }
-.day-entry-block.is-active::before { content: attr(data-time); position: absolute; left: -142px; top: 24px; width: 52px; color: var(--fg); font-family: var(--mono); font-size: 10px; line-height: 1; letter-spacing: 0.04em; text-align: right; padding-right: 12px; text-shadow: 0 0 8px rgba(255,255,255,0.7); }
+.day-entry-time-column { grid-column: 1; align-self: start; justify-self: start; width: max-content; padding: 2px 12px 0 0; text-align: left; }
+.day-entry-spine { grid-column: 2; }
+.day-entry-content { grid-column: 3; min-width: 0; }
 
 .day-entry-head { display: flex; align-items: baseline; gap: 20px; margin-bottom: 14px; flex-wrap: wrap; }
 .day-entry-actions { display: flex; gap: 6px; margin-left: auto; }
 .entry-action { border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--mute); padding: 4px 9px; font-family: var(--mono); font-size: 10px; cursor: pointer; }
 .entry-action:hover { color: var(--fg); border-color: var(--line-2); background: var(--hover); }
 .entry-action.danger:hover { color: #ffb6b6; border-color: rgba(255, 130, 130, 0.45); }
-.day-entry-time { flex: 0 0 54px; font-family: var(--mono); font-size: 11px; color: var(--mute); letter-spacing: 0.04em; }
+.day-entry-time { display: block; font-family: var(--mono); font-size: 22px; line-height: 1.1; color: var(--fg); letter-spacing: 0.02em; }
 .day-entry-title { font-family: var(--serif); font-size: 28px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.25; color: var(--fg); }
 .day-entry-body { color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.75; }
 .day-entry-body p { margin-bottom: 14px; }
@@ -313,12 +317,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .day-time-day { font-size: 20px; }
   .day-view { padding: 32px 16px 72px; }
   .day-view-head { grid-template-columns: 1fr; align-items: start; gap: 20px; margin-bottom: 32px; }
-  .day-view-body { padding-left: 42px; }
-  .day-progress { width: 24px; }
-  .day-progress-track { position: sticky; top: 24px; height: calc(100vh - 24px); }
-  .day-entry-block.is-active::before { left: -88px; width: 40px; padding-right: 8px; font-size: 9px; }
+  .day-view-body { padding-left: 0; }
+  .day-progress { left: 48px; width: 16px; }
+  .day-progress-track { top: 24px; height: 52vh; }
+  .day-entry-block { grid-template-columns: 48px 16px minmax(0, 1fr); }
+  .day-entry-time-column { grid-column: 1; justify-self: end; padding-right: 6px; text-align: right; }
+  .day-entry-spine { display: block; grid-column: 2; }
+  .day-entry-content { grid-column: 3; }
   .day-entry-head { gap: 12px; }
-  .day-entry-actions { flex-basis: 100%; margin-left: 66px; }
+  .day-entry-actions { flex-basis: auto; margin-left: auto; }
   .day-entry-title { font-size: 24px; }
   .row { grid-template-columns: 1fr; }
   .detail-entry { grid-template-columns: 1fr; gap: 8px; }

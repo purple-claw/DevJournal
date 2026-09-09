@@ -24,12 +24,12 @@ npm install
 npm run dev
 ```
 
-Server runs on `http://localhost:3002`.
+Server runs on `http://localhost:3000`.
 
 ## Google Drive setup
 
 1. Set `STORAGE_MODE=drive` in environment
-2. Visit `http://localhost:3002/auth/start`
+2. Visit `http://localhost:3000/auth/start`
 3. Sign in with your Google account
 4. Grant Drive access
 5. Data writes to `DevJavu/log.json` in your Drive

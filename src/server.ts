@@ -15,7 +15,7 @@ import { computeProductivityScore, TimeSeriesIndex } from "./algorithms/producti
 
 /* ── Config ───────────────────────────────── */
 
-const PORT = parseInt(process.env.PORT || "3002", 10);
+const PORT = parseInt(process.env.PORT || "3000", 10);
 const HOST = process.env.HOST || "0.0.0.0";
 const DATA_DIR = process.env.VERCEL ? path.join("/tmp", ".devjavu") : path.join(process.cwd(), "data");
 const LOCAL_FILE = path.join(DATA_DIR, "log.json");
