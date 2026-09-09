@@ -80,10 +80,22 @@ async function api(method, path, body) {
 /* ── Router ───────────────────────────── */
 
 function showView(name) {
-  $$(".view").forEach((v) => v.classList.add("hidden"));
+  if (name === "home") {
+    state.filterDate = null;
+    $("#day-entries").innerHTML = "";
+    $(".day-progress")?.remove();
+  }
+  $$(".view").forEach((v) => {
+    v.classList.add("hidden");
+    v.hidden = true;
+  });
   const target = document.getElementById("view-" + name);
-  if (target) target.classList.remove("hidden");
+  if (target) {
+    target.classList.remove("hidden");
+    target.hidden = false;
+  }
   $$(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
+  if (name === "day") updateDayProgress();
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 
@@ -117,6 +129,37 @@ function handleRoute() {
 }
 
 window.addEventListener("hashchange", handleRoute);
+
+function updateDayProgress() {
+  const view = $("#view-day");
+  const entries = $$("#day-entries .day-entry-block");
+  if (!view || !entries.length || view.classList.contains("hidden")) return;
+
+  const bounds = $("#day-entries").getBoundingClientRect();
+  const viewportPoint = window.innerHeight * 0.42;
+  const readingPosition = viewportPoint;
+  const progress = Math.max(0, Math.min(1, (readingPosition - bounds.top) / Math.max(1, bounds.height)));
+  view.style.setProperty("--day-progress", progress.toFixed(3));
+  let active = entries[entries.length - 1];
+  for (const entry of entries) {
+    const rect = entry.getBoundingClientRect();
+    if (rect.top <= readingPosition && rect.bottom > readingPosition) {
+      active = entry;
+      break;
+    }
+    if (rect.top > readingPosition) {
+      active = entry;
+      break;
+    }
+  }
+  const trackTop = $(".day-progress-track")?.getBoundingClientRect().top || 0;
+  const activeBottom = active.getBoundingClientRect().bottom;
+  const fillEnd = Math.min(window.innerHeight, activeBottom);
+  view.style.setProperty("--day-progress-px", `${Math.max(0, fillEnd - trackTop)}px`);
+  entries.forEach((entry) => entry.classList.toggle("is-active", entry === active));
+}
+
+window.addEventListener("scroll", updateDayProgress, { passive: true });
 
 /* ── Home timeline (collapsed day cards) ─ */
 
@@ -166,8 +209,6 @@ function collectTags(entries) {
 
 function renderDayCard(date, dayEntries) {
   const isToday = date === today();
-  const first = dayEntries[0];
-  const tags = collectTags(dayEntries);
   return `
     <button class="day-card${isToday ? " today" : ""}" data-date="${date}">
       <div class="day-time">
@@ -180,10 +221,6 @@ function renderDayCard(date, dayEntries) {
           <span class="day-count">· ${dayEntries.length} ${dayEntries.length === 1 ? "entry" : "entries"}</span>
           <span class="day-time-range">${timeRange(dayEntries)}</span>
         </div>
-        <div class="day-preview-title">${escapeHtml(first.title)}</div>
-        <div class="day-preview-snippet">${escapeHtml(snippetOf(first.body))}</div>
-        ${tags.length ? `<div class="day-tags">${tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
-        ${first.files?.length ? `<div class="entry-file-preview">${first.files.map((f) => `<span class="entry-file">${escapeHtml(typeof f === "string" ? f : f.name)}</span>`).join("")}</div>` : ""}
       </div>
       <div class="day-card-arrow">→</div>
     </button>
@@ -314,20 +351,11 @@ function shiftMonth(delta) {
   renderCalendar();
 }
 
-/* ═══════════════════════════════════════════════
-   DAY DETAIL VIEW — scroll-driven time track
-   ═══════════════════════════════════════════════ */
-
-let timeTrackObserver = null;
-let dayEntryBlocks = [];
-
-function timeToPct(timeStr) {
-  if (!timeStr) return 0;
-  const [h, m] = timeStr.split(":").map(Number);
-  return ((h * 60 + m) / (24 * 60)) * 100;
-}
-
 function renderDayView(date) {
+  const dayBody = $("#view-day .day-view-body");
+  if (!dayBody.querySelector(".day-progress")) {
+    dayBody.insertAdjacentHTML("afterbegin", `<aside class="day-progress" aria-label="Day progress"><div class="day-progress-track"><span class="day-progress-fill"></span></div></aside>`);
+  }
   const entries = state.entries
     .filter((e) => e.date === date)
     .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
@@ -336,20 +364,17 @@ function renderDayView(date) {
     $("#day-view-date").textContent = formatDayName(date);
     $("#day-view-stats").innerHTML = "";
     $("#day-entries").innerHTML = `<div class="empty"><div class="empty-title">No entries for this day</div></div>`;
-    $("#time-track-axis").innerHTML = "";
     return;
   }
 
   const d = new Date(date + "T00:00:00");
   $("#day-view-date").textContent = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const totalChars = entries.reduce((s, e) => s + (e.body?.length || 0), 0);
   const allTags = new Set(entries.flatMap((e) => e.tags || []));
   const hours = entries.map((e) => { const [h, m] = e.time.split(":").map(Number); return h + m / 60; });
   const span = hours.length > 1 ? Math.max(...hours) - Math.min(...hours) : 0;
   $("#day-view-stats").innerHTML = `<span><b>${entries.length}</b> entries</span><span><b>${timeRange(entries)}</b></span><span><b>${span > 0 ? span.toFixed(1) + "h" : "—"}</b> span</span><span><b>${allTags.size}</b> tags</span>`;
 
-  // Build the entry blocks
-  $("#day-entries").innerHTML = entries.map((e, i) => {
+  $("#day-entries").innerHTML = entries.map((e) => {
     const fileHtml = e.files?.length
       ? `<div class="day-entry-files">${e.files.map((f) => {
           const name = typeof f === "string" ? f : f.name;
@@ -359,163 +384,18 @@ function renderDayView(date) {
     const tagHtml = e.tags?.length
       ? `<div class="day-entry-tags">${e.tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div>`
       : "";
-    let gap = "";
-    if (i < entries.length - 1) {
-      const next = entries[i + 1];
-      const [h1, m1] = e.time.split(":").map(Number);
-      const [h2, m2] = next.time.split(":").map(Number);
-      const mins = (h2 + m2 / 60) - (h1 + m1 / 60);
-      if (mins > 0) {
-        const label = mins < 1 ? `${Math.round(mins * 60)}m` : mins < 12 ? `${Math.round(mins)}h ${Math.round((mins % 1) * 60)}m` : `${Math.round(mins)}h`;
-        gap = `<span class="gap">+${label}</span>`;
-      }
-    }
     return `
-      <article class="day-entry-block" data-time="${e.time}" data-pct="${timeToPct(e.time)}">
-        <div class="day-entry-time-card">
-          <span class="time">${escapeHtml(e.time)}</span>
-          ${gap}
+      <article class="day-entry-block" data-time="${e.time}">
+        <div class="day-entry-head">
+          <time class="day-entry-time">${escapeHtml(e.time)}</time>
+          <h2 class="day-entry-title">${escapeHtml(e.title)}</h2>
         </div>
-        <h2 class="day-entry-title">${escapeHtml(e.title)}</h2>
         <div class="day-entry-body">${parseMarkdown(e.body)}</div>
         ${fileHtml}${tagHtml}
       </article>
     `;
   }).join("");
-
-  // Build the time track axis (00, 06, 12, 18 labels) and entry markers
-  const axis = $("#time-track-axis");
-  const labels = [0, 6, 12, 18];
-  let axisHtml = labels.map((h) => `<span class="time-track-label" style="top: ${(h / 24) * 100}%">${pad2(h)}:00</span>`).join("");
-  // Markers for each entry
-  const markers = entries.map((e, i) => {
-    const pct = timeToPct(e.time);
-    return `<div class="time-track-marker" data-pct="${pct}" data-idx="${i}">
-      <span class="time-track-marker-tooltip">${escapeHtml(e.time)} — ${escapeHtml(e.title.slice(0, 40))}</span>
-    </div>`;
-  }).join("");
-  axis.innerHTML = axisHtml + markers;
-
-  // Wire up scroll observer
-  setupScrollProgress(entries);
-}
-
-function setupScrollProgress(entries) {
-  // Disconnect old observer
-  if (timeTrackObserver) timeTrackObserver.disconnect();
-
-  const axis = document.getElementById("time-track-axis");
-  const fill = document.getElementById("time-track-fill");
-  const cursor = document.getElementById("time-track-cursor");
-  const cursorTime = document.getElementById("time-track-cursor-time");
-  const markers = axis.querySelectorAll(".time-track-marker");
-  const blocks = document.querySelectorAll(".day-entry-block");
-  dayEntryBlocks = Array.from(blocks);
-
-  // Reveal blocks as they enter view
-  timeTrackObserver = new IntersectionObserver((entriesObs) => {
-    entriesObs.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("in-view");
-      }
-    });
-    // Update fill based on scroll position
-    updateProgressFill();
-  }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
-
-  blocks.forEach((b) => timeTrackObserver.observe(b));
-
-  // Listen for scroll to update cursor and fill
-  let raf = null;
-  window.addEventListener("scroll", () => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => {
-      updateProgressFill();
-      updateCursor(entries);
-      updateMarkers();
-      raf = null;
-    });
-  }, { passive: true });
-
-  // Initial update
-  setTimeout(() => {
-    updateProgressFill();
-    updateCursor(entries);
-    updateMarkers();
-  }, 100);
-}
-
-function updateProgressFill() {
-  const fill = document.getElementById("time-track-fill");
-  if (!fill) return;
-  // The fill height = scroll progress through the day-entries
-  const entries = document.getElementById("day-entries");
-  if (!entries) return;
-  const rect = entries.getBoundingClientRect();
-  const track = document.querySelector(".time-track");
-  if (!track) return;
-  const trackRect = track.getBoundingClientRect();
-
-  // Calculate how far down the day-entries we've scrolled
-  const startY = trackRect.top;
-  const endY = trackRect.bottom;
-  const viewH = window.innerHeight;
-
-  // We want fill to go from 0% (when scroll position is at top) to 100% (when at bottom)
-  // The track is sticky at top: 100px, so it stays visible
-  // Calculate progress based on scroll position through the entries
-  const scrollY = window.scrollY;
-  const entriesStart = entries.offsetTop;
-  const entriesEnd = entriesStart + entries.offsetHeight;
-  const totalScroll = entriesEnd - entriesStart - viewH + 100; // approximate scrollable range
-  const currentScroll = Math.max(0, scrollY - entriesStart);
-  const pct = Math.min(100, Math.max(0, (currentScroll / Math.max(1, totalScroll)) * 100));
-
-  fill.style.height = pct + "%";
-}
-
-function updateCursor(entries) {
-  const cursor = document.getElementById("time-track-cursor");
-  const cursorTime = document.getElementById("time-track-cursor-time");
-  const track = document.querySelector(".time-track");
-  if (!cursor || !track) return;
-
-  // Find which entry is currently most in view
-  const viewCenter = window.innerHeight / 2;
-  let bestEntry = entries[0];
-  let bestDist = Infinity;
-
-  for (const e of entries) {
-    const block = document.querySelector(`.day-entry-block[data-time="${e.time}"]`);
-    if (!block) continue;
-    const rect = block.getBoundingClientRect();
-    const blockCenter = rect.top + rect.height / 2;
-    const dist = Math.abs(blockCenter - viewCenter);
-    if (dist < bestDist) {
-      bestDist = dist;
-      bestEntry = e;
-    }
-  }
-
-  // Position cursor at the entry's time percentage
-  const pct = timeToPct(bestEntry.time);
-  cursor.style.top = pct + "%";
-  cursorTime.textContent = bestEntry.time;
-}
-
-function updateMarkers() {
-  const markers = document.querySelectorAll(".time-track-marker");
-  const viewCenter = window.innerHeight / 2;
-  markers.forEach((m) => {
-    const pct = parseFloat(m.dataset.pct);
-    // A marker is "passed" if scroll has moved past its time
-    // Simple heuristic: if the cursor has moved past it
-    const cursor = document.getElementById("time-track-cursor");
-    if (!cursor) return;
-    const cursorPct = parseFloat(cursor.style.top) || 0;
-    if (cursorPct > pct) m.classList.add("passed");
-    else m.classList.remove("passed");
-  });
+  updateDayProgress();
 }
 
 function fileIcon(name) {
@@ -604,7 +484,7 @@ function openModal(entry) {
   form.reset();
   $("#modal-title").textContent = entry ? "Edit entry" : "New entry";
   if (entry) {
-    form.id.value = entry.id;
+    form.entryId.value = entry.id;
     form.date.value = entry.date;
     form.time.value = entry.time;
     form.title.value = entry.title;
@@ -689,8 +569,9 @@ function wireEvents() {
       files: fileList.map((f) => f.name),
     };
     try {
-      if (form.id.value) {
-        await api("PUT", "/api/entries/" + form.id.value, data);
+      const entryId = form.entryId?.value;
+      if (entryId) {
+        await api("PUT", "/api/entries/" + entryId, data);
       } else {
         await api("POST", "/api/entries", data);
       }

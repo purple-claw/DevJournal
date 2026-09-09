@@ -8,6 +8,7 @@ import express, { Request, Response } from "express";
 import fs from "node:fs";
 import path from "node:path";
 import https from "node:https";
+import net from "node:net";
 import { URL } from "node:url";
 import { computeProductivityScore, TimeSeriesIndex } from "./algorithms/productivity.js";
 
@@ -264,6 +265,36 @@ function escapeHtml(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] || c));
 }
 
+export async function resolvePort(port: number): Promise<number> {
+  for (let candidate = port; candidate < port + 25; candidate++) {
+    const free = await new Promise<boolean>((resolve) => {
+      const tester = net.createServer();
+      tester.once("error", () => resolve(false));
+      tester.once("listening", () => tester.close(() => resolve(true)));
+      tester.listen(candidate, HOST);
+    });
+    if (free) return candidate;
+  }
+  return port;
+}
+
+export function validateEntryInput(payload: any): { ok: true; value: { title: string; body: string; tags: string[]; files: string[]; date: string; time: string }; } | { ok: false; error: string } {
+  const title = String(payload?.title ?? "").trim();
+  const body = String(payload?.body ?? "").trim();
+  if (!title) return { ok: false, error: "title required" };
+  if (!body) return { ok: false, error: "body required" };
+
+  const tags = Array.isArray(payload?.tags) ? payload.tags.map((t: any) => String(t).trim()).filter(Boolean) : [];
+  const files = Array.isArray(payload?.files) ? payload.files.map((f: any) => String(f).trim()).filter(Boolean) : [];
+  const date = String(payload?.date || new Date().toISOString().slice(0, 10)).trim();
+  const time = String(payload?.time || new Date().toTimeString().slice(0, 5)).trim();
+
+  return {
+    ok: true,
+    value: { title, body, tags, files, date, time },
+  };
+}
+
 /* ── App factory ──────────────────────────── */
 
 export function createApp() {
@@ -289,14 +320,17 @@ export function createApp() {
 
   app.post("/api/entries", async (req: Request, res: Response) => {
     try {
-      const { title, body, tags, files, date, time } = req.body || {};
-      if (!title || !body) return res.status(400).json({ error: "title and body required" });
+      const parsed = validateEntryInput(req.body || {});
+      if (parsed.ok !== true) {
+        return res.status(400).json({ error: parsed.error });
+      }
+      const { title, body, tags, files, date, time } = parsed.value;
       const t = now();
       const entry: Entry = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         title, body,
-        tags: Array.isArray(tags) ? tags : [],
-        files: Array.isArray(files) ? files : [],
+        tags,
+        files,
         date: date || t.date,
         time: time || t.time,
         createdAt: t.createdAt,
@@ -312,18 +346,22 @@ export function createApp() {
 
   app.put("/api/entries/:id", async (req: Request, res: Response) => {
     try {
+      const parsed = validateEntryInput(req.body || {});
+      if (parsed.ok !== true) {
+        return res.status(400).json({ error: parsed.error });
+      }
       const entries = await storage.list();
       const i = entries.findIndex((e) => e.id === req.params.id);
       if (i === -1) return res.status(404).json({ error: "not found" });
-      const { title, body, tags, files, date, time } = req.body || {};
+      const { title, body, tags, files, date, time } = parsed.value;
       entries[i] = {
         ...entries[i],
-        ...(title && { title }),
-        ...(body && { body }),
-        ...(tags && { tags }),
-        ...(files && { files }),
-        ...(date && { date }),
-        ...(time && { time }),
+        title,
+        body,
+        tags,
+        files,
+        date,
+        time,
       };
       await storage.save(entries);
       res.json(entries[i]);
@@ -457,10 +495,15 @@ export function createApp() {
 const isMain = process.argv[1] && (process.argv[1].endsWith("server.ts") || process.argv[1].endsWith("server.js"));
 if (isMain) {
   const app = createApp();
-  app.listen(PORT, HOST, () => {
-    console.log(`DevJavu on http://${HOST}:${PORT} (storage: ${STORAGE_MODE})`);
-    if (STORAGE_MODE === "drive" && !hasTokens()) {
-      console.log(`Visit http://${HOST}:${PORT}/auth/start to authorize Google Drive`);
-    }
+  void resolvePort(PORT).then((actualPort) => {
+    app.listen(actualPort, HOST, () => {
+      console.log(`DevJavu on http://${HOST}:${actualPort} (storage: ${STORAGE_MODE})`);
+      if (actualPort !== PORT) {
+        console.log(`Port ${PORT} was busy; using ${actualPort} instead.`);
+      }
+      if (STORAGE_MODE === "drive" && !hasTokens()) {
+        console.log(`Visit http://${HOST}:${actualPort}/auth/start to authorize Google Drive`);
+      }
+    });
   });
 }

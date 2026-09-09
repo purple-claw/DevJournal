@@ -79,8 +79,8 @@
     </div>
   </main>
 
-  <!-- ═══════ DAY DETAIL VIEW (with scroll-progress bar) ═══════ -->
-  <main class="day-view hidden" id="view-day">
+  <!-- ═══════ DAY DETAIL VIEW ═══════ -->
+  <main class="day-view view hidden" id="view-day">
     <header class="day-view-head">
       <button class="back-btn" id="day-back">← timeline</button>
       <div class="day-view-title">
@@ -90,22 +90,12 @@
     </header>
 
     <div class="day-view-body">
-      <!-- Vertical scroll-progress time track -->
-      <aside class="time-track" aria-label="Time of day">
-        <div class="time-track-axis" id="time-track-axis"></div>
-        <div class="time-track-fill" id="time-track-fill"></div>
-        <div class="time-track-cursor" id="time-track-cursor">
-          <div class="time-track-cursor-dot"></div>
-          <div class="time-track-cursor-time" id="time-track-cursor-time">--:--</div>
-        </div>
-      </aside>
-
       <div class="day-entries" id="day-entries"></div>
     </div>
   </main>
 
   <!-- ═══════ ENTRY DETAIL VIEW (deep-link from timeline) ═══════ -->
-  <main class="detail-view hidden" id="view-entry">
+  <main class="detail-view view hidden" id="view-entry">
     <header class="detail-head">
       <button class="back-btn" id="detail-back">← back</button>
       <div class="detail-date" id="detail-date"></div>
@@ -121,7 +111,7 @@
         <button class="icon-btn" id="modal-close" aria-label="Close">×</button>
       </div>
       <form id="entry-form" class="modal-body">
-        <input type="hidden" name="id">
+        <input type="hidden" name="entryId">
         <div class="row">
           <div class="field">
             <label>Date</label>
@@ -157,6 +147,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
