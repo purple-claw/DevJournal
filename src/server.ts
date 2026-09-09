@@ -4,14 +4,14 @@
    Local dev (server.ts) and Vercel serverless (api/index.ts) compatible.
    ───────────────────────────────────────────── */
 
-import express, { Request, Response } from "express";
+import express, { type Request, type Response } from "express";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import https from "node:https";
 import net from "node:net";
 import { URL } from "node:url";
-import { computeProductivityScore, TimeSeriesIndex } from "./algorithms/productivity.js";
+import { computeProductivityScore, TimeSeriesIndex } from "./algorithms/productivity.ts";
 
 /* ── Config ───────────────────────────────── */
 
