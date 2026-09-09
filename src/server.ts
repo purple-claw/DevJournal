@@ -28,6 +28,7 @@ const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   || (process.env.GOOGLE_SERVICE_ACCOUNT_JSON_FILE ? fs.readFileSync(process.env.GOOGLE_SERVICE_ACCOUNT_JSON_FILE, "utf-8") : "");
 const GOOGLE_DRIVE_SHARE_WITH = process.env.GOOGLE_DRIVE_SHARE_WITH || "";
 const STORAGE_MODE = (process.env.STORAGE_MODE || "local") as "local" | "drive";
+const ENTRY_TOKEN = "Iris27";
 const DRIVE_FOLDER = "DevJavu";
 const DRIVE_FILE = "log.json";
 
@@ -370,6 +371,9 @@ export function createApp() {
 
   app.post("/api/entries", async (req: Request, res: Response) => {
     try {
+      if (req.body?.token !== ENTRY_TOKEN) {
+        return res.status(401).json({ error: "valid entry token required" });
+      }
       const parsed = validateEntryInput(req.body || {});
       if (parsed.ok !== true) {
         return res.status(400).json({ error: parsed.error });

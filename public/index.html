@@ -104,6 +104,24 @@
   </main>
 
   <!-- ═══════ MODAL ═══════ -->
+  <div class="modal" id="token-modal" hidden>
+    <div class="modal-card token-card">
+      <div class="modal-head">
+        <span class="modal-title">Unlock new entry</span>
+        <button class="icon-btn" id="token-modal-close" aria-label="Close">×</button>
+      </div>
+      <form id="token-form" class="modal-body">
+        <div class="field">
+          <label for="entry-token">Entry token</label>
+          <input id="entry-token" name="token" type="password" autocomplete="off" required autofocus>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="token-modal-cancel">Cancel</button>
+          <button type="submit" class="btn primary">Continue</button>
+        </div>
+      </form>
+    </div>
+  </div>
   <div class="modal" id="modal" hidden>
     <div class="modal-card">
       <div class="modal-head">
@@ -147,6 +165,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

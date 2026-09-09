@@ -479,6 +479,20 @@ function renderEntryDetail(id) {
 
 const modal = $("#modal");
 const form = $("#entry-form");
+const tokenModal = $("#token-modal");
+const tokenForm = $("#token-form");
+const ENTRY_TOKEN = "Iris27";
+
+function requestNewEntry() {
+  tokenForm.reset();
+  tokenModal.hidden = false;
+  setTimeout(() => $("#entry-token").focus(), 50);
+}
+
+function closeTokenModal() {
+  tokenModal.hidden = true;
+  tokenForm.reset();
+}
 
 function openModal(entry) {
   form.reset();
@@ -526,16 +540,18 @@ function openModal(entry) {
 function closeModal() {
   modal.hidden = true;
   form.reset();
+  delete form.dataset.entryToken;
 }
 
 function wireEvents() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !modal.hidden) closeModal();
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); openModal(); }
+    if (e.key === "Escape" && !tokenModal.hidden) closeTokenModal();
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); requestNewEntry(); }
     if (e.key === "Escape" && (parseHash().view === "day" || parseHash().view === "entry")) navigate("#/");
   });
 
-  $("#new-btn").addEventListener("click", () => openModal());
+  $("#new-btn").addEventListener("click", requestNewEntry);
   document.querySelector(".brand-btn")?.addEventListener("click", () => navigate("#/"));
   $$(".nav-btn").forEach((b) => b.addEventListener("click", () => navigate(b.dataset.view === "home" ? "#/" : "#/calendar")));
   $("#day-back")?.addEventListener("click", () => navigate("#/"));
@@ -550,8 +566,23 @@ function wireEvents() {
   });
 
   modal?.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+  tokenModal?.addEventListener("click", (e) => { if (e.target === tokenModal) closeTokenModal(); });
   $("#modal-close")?.addEventListener("click", closeModal);
   $("#modal-cancel")?.addEventListener("click", closeModal);
+  $("#token-modal-close")?.addEventListener("click", closeTokenModal);
+  $("#token-modal-cancel")?.addEventListener("click", closeTokenModal);
+
+  tokenForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (tokenForm.token.value !== ENTRY_TOKEN) {
+      alert("Invalid token.");
+      tokenForm.token.select();
+      return;
+    }
+    form.dataset.entryToken = tokenForm.token.value;
+    closeTokenModal();
+    openModal();
+  });
 
   $("#entry-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -567,6 +598,7 @@ function wireEvents() {
       body: form.body.value,
       tags: form.tags.value.split(",").map((s) => s.trim()).filter(Boolean),
       files: fileList.map((f) => f.name),
+      token: form.dataset.entryToken,
     };
     try {
       const entryId = form.entryId?.value;
