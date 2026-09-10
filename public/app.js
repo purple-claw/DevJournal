@@ -95,6 +95,8 @@ function showView(name) {
     target.classList.remove("hidden");
     target.hidden = false;
   }
+  const scrollControls = $("#day-scroll-controls");
+  if (scrollControls) scrollControls.hidden = name !== "day";
   $$(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
   if (name === "day") updateDayProgress();
   window.scrollTo({ top: 0, behavior: "instant" });
@@ -157,6 +159,14 @@ function updateDayProgress() {
 }
 
 window.addEventListener("scroll", updateDayProgress, { passive: true });
+
+function scrollDayBy(direction) {
+  const amount = Math.max(240, Math.round(window.innerHeight * 0.78));
+  window.scrollBy({ top: direction * amount, behavior: "smooth" });
+}
+
+$("#day-scroll-up")?.addEventListener("click", () => scrollDayBy(-1));
+$("#day-scroll-down")?.addEventListener("click", () => scrollDayBy(1));
 
 /* ── Home timeline (collapsed day cards) ─ */
 
@@ -499,6 +509,11 @@ function openAttachment(rawFile) {
     image.alt = name;
     image.src = file.content;
     body.appendChild(image);
+    } else if (["md", "markdown"].includes(name.split(".").pop()?.toLowerCase() || "")) {
+      const markdown = document.createElement("div");
+      markdown.className = "attachment-markdown";
+      markdown.innerHTML = parseMarkdown(file.content);
+      body.appendChild(markdown);
   } else {
     const code = document.createElement("pre");
     code.className = "attachment-code";
