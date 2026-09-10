@@ -418,6 +418,9 @@ export function createApp() {
 
   app.put("/api/entries/:id", async (req: Request, res: Response) => {
     try {
+      if (req.body?.token !== ENTRY_TOKEN) {
+        return res.status(401).json({ error: "valid entry token required" });
+      }
       const parsed = validateEntryInput(req.body || {});
       if (parsed.ok !== true) {
         return res.status(400).json({ error: parsed.error });
@@ -444,6 +447,9 @@ export function createApp() {
 
   app.delete("/api/entries/:id", async (req: Request, res: Response) => {
     try {
+      if (req.body?.token !== ENTRY_TOKEN) {
+        return res.status(401).json({ error: "valid entry token required" });
+      }
       const entries = (await storage.list()).filter((e) => e.id !== req.params.id);
       await storage.save(entries);
       res.json({ ok: true });

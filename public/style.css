@@ -280,6 +280,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .file-meta { display: flex; flex-direction: column; min-width: 0; }
 .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .file-size { font-size: 10px; color: var(--mute); margin-top: 2px; }
+.file-remove { margin-left: auto; border: 0; background: transparent; color: var(--mute); font-size: 17px; line-height: 1; cursor: pointer; padding: 2px 4px; }
+.file-remove:hover { color: var(--fg); }
 .day-entry-tags { display: flex; gap: 6px; margin-top: 20px; flex-wrap: wrap; }
 .preview-body { padding: 22px; max-height: 70vh; overflow: auto; }
 .attachment-markdown { max-width: 760px; margin: 0 auto; }

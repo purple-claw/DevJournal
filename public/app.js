@@ -535,8 +535,14 @@ function closePreview() {
 async function deleteEntry(id) {
   const entry = state.entries.find((item) => item.id === id);
   if (!entry || !window.confirm(`Delete the ${entry.time} entry “${entry.title}”?`)) return;
+  openTokenGate(() => completeDeleteEntry(id), "Unlock delete");
+}
+
+async function completeDeleteEntry(id) {
+  const entry = state.entries.find((item) => item.id === id);
+  if (!entry) return;
   try {
-    await api("DELETE", "/api/entries/" + encodeURIComponent(id));
+    await api("DELETE", "/api/entries/" + encodeURIComponent(id), { token: ENTRY_TOKEN });
     state.entries = state.entries.filter((item) => item.id !== id);
     applyFilter();
     renderWeek();
@@ -619,6 +625,13 @@ const tokenForm = $("#token-form");
 const ENTRY_TOKEN = "Iris27";
 
 function requestNewEntry() {
+  openTokenGate(() => openModal());
+}
+
+function openTokenGate(action, title = "Unlock entry") {
+  tokenModal.dataset.action = "pending";
+  tokenModal._authorizedAction = action;
+  $("#token-modal .modal-title").textContent = title;
   tokenForm.reset();
   tokenModal.hidden = false;
   setTimeout(() => $("#entry-token").focus(), 50);
@@ -627,6 +640,8 @@ function requestNewEntry() {
 function closeTokenModal() {
   tokenModal.hidden = true;
   tokenForm.reset();
+  delete tokenModal.dataset.action;
+  delete tokenModal._authorizedAction;
 }
 
 function openModal(entry) {
@@ -647,6 +662,7 @@ function openModal(entry) {
       (entry.files || []).forEach((f) => {
         const name = typeof f === "string" ? f : f.name || "file";
         const card = document.createElement("div");
+        card.className = "file-card-edit";
         card.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:2px;background:var(--bg-1);font-family:var(--mono);font-size:11px;color:var(--fg);flex:1;min-width:160px;";
         const icon = document.createElement("span");
         const ext = (name.split(".").pop() || "").toLowerCase();
@@ -656,7 +672,14 @@ function openModal(entry) {
         const meta = document.createElement("div");
         meta.style.cssText = "display:flex;flex-direction:column;min-width:0;";
         meta.innerHTML = `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">` + escapeHtml(name) + `</span>`;
-        card.append(icon, meta);
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "file-remove";
+        remove.dataset.removeFile = String((entry.files || []).indexOf(f));
+        remove.textContent = "×";
+        remove.title = "Remove attachment";
+        remove.setAttribute("aria-label", `Remove ${name}`);
+        card.append(icon, meta, remove);
         preview.appendChild(card);
       });
     }
@@ -719,9 +742,21 @@ function wireEvents() {
       tokenForm.token.select();
       return;
     }
-    form.dataset.entryToken = tokenForm.token.value;
+    const action = tokenModal._authorizedAction;
+    const token = tokenForm.token.value;
+    form.dataset.entryToken = token;
     closeTokenModal();
-    openModal();
+    action?.(token);
+  });
+
+  $("#file-preview")?.addEventListener("click", (e) => {
+    const remove = e.target.closest("[data-remove-file]");
+    if (!remove) return;
+    const files = JSON.parse(form.dataset.existingFiles || "[]");
+    files.splice(Number(remove.dataset.removeFile), 1);
+    form.dataset.existingFiles = JSON.stringify(files);
+    remove.closest(".file-card-edit")?.remove();
+    $$("#file-preview [data-remove-file]").forEach((button, index) => { button.dataset.removeFile = String(index); });
   });
 
   $("#entry-form")?.addEventListener("submit", async (e) => {
@@ -765,7 +800,7 @@ function wireEvents() {
     if (edit) {
       e.stopPropagation();
       const entry = state.entries.find((item) => item.id === edit.dataset.editEntry);
-      if (entry) openModal(entry);
+      if (entry) openTokenGate(() => openModal(entry), "Unlock edit");
       return;
     }
     const remove = e.target.closest("[data-delete-entry]");
