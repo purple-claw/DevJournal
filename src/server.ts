@@ -11,7 +11,7 @@ import path from "node:path";
 import https from "node:https";
 import net from "node:net";
 import { URL } from "node:url";
-import { computeProductivityScore, TimeSeriesIndex } from "./algorithms/productivity.ts";
+import { computeProductivityScore, TimeSeriesIndex } from "./algorithms/productivity.js";
 
 /* ── Config ───────────────────────────────── */
 
