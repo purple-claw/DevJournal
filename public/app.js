@@ -56,7 +56,8 @@ function tokenize(code, order) {
 
 function renderCodeBlock(lang, code) {
   const language = lang || "code";
-  const lines = code.split("\n");
+  const normalizedCode = code.replace(/\r\n/g, "\n").replace(/\n+$/, "");
+  const lines = normalizedCode.split("\n");
   const order = [
     ["com", /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)/g],
     ["str", /(["'`])(?:\\.|(?!\1).)*\1/g],
@@ -64,7 +65,7 @@ function renderCodeBlock(lang, code) {
     ["kw",  /\b(const|let|var|function|return|if|else|for|while|class|extends|import|export|from|new|this|async|await|try|catch|throw|typeof|interface|type|public|private|protected|static|void|null|true|false|undefined|in|of|as|do|switch|case|break|continue|yield|delete)\b/g],
     ["fn",  /\b([a-zA-Z_$][\w$]*)(?=\()/g],
   ];
-  const highlighted = tokenize(code, order);
+  const highlighted = tokenize(normalizedCode, order);
   const lineHtml = lines.map((_, i) => `<span class="code-line"><span class="code-line-num">${i + 1}</span>${highlighted.split("\n")[i] || "&nbsp;"}</span>`).join("");
   return `<div class="code-block"><div class="code-header"><span class="code-lang">${escapeHtml(language)}</span><button class="code-copy" data-copy>copy</button></div><pre><code>${lineHtml}</code></pre></div>`;
 }
