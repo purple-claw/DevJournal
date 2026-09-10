@@ -250,11 +250,12 @@ function renderTimeline(entries) {
     $("#entry-count").textContent = "";
     return;
   }
-  const recent = [...entries].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 4);
-  $("#entry-count").textContent = entries.length > recent.length
-    ? `showing ${recent.length} of ${entries.length} entries`
-    : `${recent.length} entries`;
-  root.innerHTML = recent.map(renderTimelineEntry).join("");
+  const grouped = groupByDay(entries);
+  const recent = grouped.slice(0, 4);
+  $("#entry-count").textContent = grouped.length > recent.length
+    ? `showing ${recent.length} of ${grouped.length} days`
+    : `${recent.length} days`;
+  root.innerHTML = recent.map(([date, dayEntries]) => renderDayCard(date, dayEntries)).join("");
 }
 
 function applyFilter() {
@@ -274,7 +275,7 @@ function renderWeek() {
   if (!grid) return;
   const now = new Date();
   const days = [];
-  for (let i = 6; i >= 0; i--) {
+  for (let i = 3; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
@@ -303,6 +304,46 @@ function renderWeek() {
       ? `<span><b>${totalWeek}</b> entries this week</span><span>goal hit</span>`
       : `<span><b>${totalWeek}</b> of ${goal}</span><span>this week</span>`;
   }
+}
+
+function renderContributionMap() {
+  const map = $("#contribution-map");
+  const months = $("#contribution-months");
+  if (!map || !months) return;
+
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+  const start = new Date(end);
+  start.setDate(start.getDate() - 364);
+  start.setDate(start.getDate() - start.getDay());
+  const counts = new Map();
+  for (const entry of state.entries) counts.set(entry.date, (counts.get(entry.date) || 0) + 1);
+
+  const cells = [];
+  const monthLabels = [];
+  let cursor = new Date(start);
+  let total = 0;
+  while (cursor <= end) {
+    const weekStart = new Date(cursor);
+    for (let day = 0; day < 7; day += 1) {
+      const date = new Date(weekStart);
+      date.setDate(date.getDate() + day);
+      const dateStr = date.toISOString().slice(0, 10);
+      const count = date <= end && date >= start ? (counts.get(dateStr) || 0) : 0;
+      total += count;
+      cells.push({ date: dateStr, count, outside: date > end || date < start });
+    }
+    if (weekStart.getDate() <= 7 || weekStart.getDate() === 1) {
+      monthLabels.push({ label: weekStart.toLocaleDateString("en-US", { month: "short" }), offset: cells.length / 7 });
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  const max = Math.max(1, ...cells.map((cell) => cell.count));
+  const level = (count) => count === 0 ? 0 : Math.min(4, Math.ceil((count / max) * 4));
+
+  map.innerHTML = cells.map((cell) => `<span class="contribution-cell level-${level(cell.count)}${cell.outside ? " outside" : ""}" title="${cell.date}: ${cell.count}"></span>`).join("");
+  months.innerHTML = monthLabels.map((month) => `<span style="--month-offset: ${month.offset}">${month.label}</span>`).join("");
+  $("#contribution-total").textContent = `${total} contributions`;
 }
 
 /* ── Calendar ─────────────────────────── */
@@ -483,6 +524,7 @@ async function deleteEntry(id) {
     state.entries = state.entries.filter((item) => item.id !== id);
     applyFilter();
     renderWeek();
+    renderContributionMap();
     renderDayView(entry.date);
   } catch (err) {
     alert("Delete failed: " + err.message);
@@ -753,6 +795,7 @@ async function refresh() {
     renderStats(score);
     applyFilter();
     renderWeek();
+    renderContributionMap();
     const route = parseHash();
     if (route.view === "calendar") renderCalendar();
     if (route.view === "day") renderDayView(route.date);
